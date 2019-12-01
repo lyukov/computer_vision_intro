@@ -1,0 +1,14 @@
+*/public_tests
+*/tests
+*.zip
+*.pdf
+*.sh
+*.jpg
+*.png
+*/__pycache__
+*/models
+*.hdf5
+*.csv
+.ipynb_checkpoints
+*.npy
+*.h5
