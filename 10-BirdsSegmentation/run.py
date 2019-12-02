@@ -116,7 +116,7 @@ def grade(data_path):
     return res
 
 
-def run_single_test(data_dir, output_dir):
+def run_single_test(data_dir, output_dir, model_path='segmentation_model.hdf5'):
     from segmentation import predict
     from tensorflow.keras.models import load_model
     from os.path import abspath, basename, dirname, join
@@ -125,10 +125,10 @@ def run_single_test(data_dir, output_dir):
     
     code_dir = dirname(abspath(__file__))
 
-    from segmentation import train_segmentation_model
-    model = train_segmentation_model(join(data_dir, 'train'))
+    #from segmentation import train_segmentation_model
+    #model = train_segmentation_model(join(data_dir, 'train'))
 
-    model = load_model(join(code_dir, 'segmentation_model.hdf5'))
+    model = load_model(join(code_dir, model_path))
 
     img_filenames = glob(join(data_dir, 'test/images/**/*.jpg'))
 
@@ -157,7 +157,7 @@ if __name__ == '__main__':
             grade(data_dir)
     else:
         # Script is running locally, run on dir with tests
-        if len(argv) != 2:
+        if len(argv) < 2:
             print(f'Usage: {argv[0]} tests_dir')
             exit(0)
 
@@ -168,6 +168,11 @@ if __name__ == '__main__':
         from shutil import copytree
 
         tests_dir = argv[1]
+        if len(argv) > 2:
+            model_path = argv[2]
+        else:
+            model_path = 'segmentation_model.hdf5'
+        print('Using model at', model_path)
 
         results = []
         for input_dir in sorted(glob(join(tests_dir, '[0-9][0-9]_*_input'))):
@@ -181,7 +186,7 @@ if __name__ == '__main__':
 
             try:
                 start = time()
-                run_single_test(input_dir, run_output_dir)
+                run_single_test(input_dir, run_output_dir, model_path)
                 end = time()
                 running_time = end - start
             except:
