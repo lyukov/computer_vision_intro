@@ -13,7 +13,7 @@ from keras.initializers import he_normal
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
-import glob
+from keras.applications import VGG16
 
 target_size = (256, 256)
 
@@ -27,19 +27,20 @@ def train_segmentation_model(train_data_path):
         horizontal_flip=True,
         fill_mode='nearest')
     
+    batch_size = 32
     my_gen = trainGenerator(
-        batch_size=32,
+        batch_size=batch_size,
         image_path=os.path.join(train_data_path, 'images'),
         mask_path=os.path.join(train_data_path, 'gt'),
         aug_dict=data_gen_args,
         target_size=target_size)
     
-    model = unet(input_size=(None, None, 3), base=32)
+    model = unet(input_size=(None, None, 3), base=48)
     
     model.fit_generator(
         my_gen,
-        steps_per_epoch=260,
-        epochs=10)
+        steps_per_epoch=8382 // batch_size,
+        epochs=15)
     
     return model
 
@@ -55,7 +56,7 @@ def predict(model, img_path):
     return resize(result, shape)[...,0]
 
 
-def unet(input_size = (256,256,3), seed=42, pretrained_weights = None, base = 32, actv='relu'):
+def unet(input_size = (256,256,3), seed=42, base = 32, actv='relu'):
     inputs = Input(input_size)
     kern_init = kernel_initializer=he_normal(seed=seed)
     conv1 = Conv2D(base,    3, activation=actv, padding='same', )(inputs)
@@ -103,10 +104,70 @@ def unet(input_size = (256,256,3), seed=42, pretrained_weights = None, base = 32
 
     model = Model(input = inputs, output = conv10)
 
-    model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy', iou])
+    model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
+
+    return model
+
+
+def unet_vgg16(input_size = (256,256,3), seed=42, pretrained_weights = None, actv='relu'):
+    inputs = Input(input_size)
+    kern_init = kernel_initializer=he_normal(seed=seed)
+    conv1 = Conv2D(64,  3, activation=actv, padding='same', )(inputs)
+    conv1 = Conv2D(64,  3, activation=actv, padding='same', kernel_initializer=kern_init)(conv1)
+    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
     
-    if(pretrained_weights):
-        model.load_weights(pretrained_weights)
+    conv2 = Conv2D(128, 3, activation=actv, padding='same', kernel_initializer=kern_init)(pool1)
+    conv2 = Conv2D(128, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv2)
+    pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+    
+    conv3 = Conv2D(256, 3, activation=actv, padding='same', kernel_initializer=kern_init)(pool2)
+    conv3 = Conv2D(256, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv3)
+    conv3 = Conv2D(256, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv3)
+    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+    
+    conv4 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(pool3)
+    conv4 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv4)
+    conv4 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv4)
+    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
+
+    conv5 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(pool4)
+    conv5 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv5)
+    conv5 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv5)
+    drop5 = Dropout(0.5)(conv5)
+
+    up6   = Conv2D(512, 2, activation=actv, padding='same', kernel_initializer=kern_init)(UpSampling2D(size = (2,2))(drop5))
+    merge6 = concatenate([conv4,up6], axis = 3)
+    conv6 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(merge6)
+    conv6 = Conv2D(512, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv6)
+
+    up7   = Conv2D(256, 2, activation=actv, padding='same', kernel_initializer=kern_init)(UpSampling2D(size = (2,2))(conv6))
+    merge7 = concatenate([conv3,up7], axis = 3)
+    conv7 = Conv2D(256, 3, activation=actv, padding='same', kernel_initializer=kern_init)(merge7)
+    conv7 = Conv2D(256, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv7)
+
+    up8   = Conv2D(128, 2, activation=actv, padding='same', kernel_initializer=kern_init)(UpSampling2D(size = (2,2))(conv7))
+    merge8 = concatenate([conv2,up8], axis = 3)
+    conv8 = Conv2D(128, 3, activation=actv, padding='same', kernel_initializer=kern_init)(merge8)
+    conv8 = Conv2D(128, 3, activation=actv, padding='same', kernel_initializer=kern_init)(conv8)
+
+    up9   = Conv2D(64,  2, activation=actv, padding='same', kernel_initializer=kern_init)(UpSampling2D(size = (2,2))(conv8))
+    merge9 = concatenate([conv1,up9], axis = 3)
+    conv9 = Conv2D(64,  3, activation=actv, padding='same', kernel_initializer=kern_init)(merge9)
+    conv9 = Conv2D(64,  3, activation=actv, padding='same', kernel_initializer=kern_init)(conv9)
+    conv9 = Conv2D(2,   3, activation=actv, padding='same', kernel_initializer=kern_init)(conv9)
+    conv10 = Conv2D(1,  1, activation = 'sigmoid')(conv9)
+
+    model = Model(input = inputs, output = conv10)
+
+    model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
+    
+    vgg_conv = VGG16(weights='imagenet', include_top=False, input_shape=(256, 256, 3))
+
+    for i in range(len(vgg_conv.layers)):
+        weights = vgg_conv.layers[i].get_weights()
+        layer = model.layers[i]
+        layer.set_weights(weights)
+        layer.trainable = False
 
     return model
 
