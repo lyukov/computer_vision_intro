@@ -18,16 +18,16 @@ from keras.applications import VGG16
 target_size = (256, 256)
 
 def train_segmentation_model(train_data_path):
+    batch_size = 16
     data_gen_args = dict(
-        rotation_range=0.2,
-        width_shift_range=0.05,
-        height_shift_range=0.05,
-        shear_range=0.05,
-        zoom_range=0.05,
+        rotation_range=0.3,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        #shear_range=0.05,
+        zoom_range=0.15,
         horizontal_flip=True,
         fill_mode='nearest')
     
-    batch_size = 32
     my_gen = trainGenerator(
         batch_size=batch_size,
         image_path=os.path.join(train_data_path, 'images'),
@@ -35,12 +35,33 @@ def train_segmentation_model(train_data_path):
         aug_dict=data_gen_args,
         target_size=target_size)
     
-    model = unet(input_size=(None, None, 3), base=48)
+    model = unet_vgg16(input_size=(None, None, 3))
     
     model.fit_generator(
         my_gen,
         steps_per_epoch=8382 // batch_size,
-        epochs=15)
+        epochs=40)
+    
+    train_gen = trainGenerator(
+        batch_size=batch_size,
+        image_path=os.path.join(train_data_path, 'images'),
+        mask_path=os.path.join(train_data_path, 'gt'),
+        aug_dict=data_gen_args,
+        target_size=target_size)
+
+    model.compile(optimizer = Adam(lr = 4e-5), loss = 'binary_crossentropy', metrics = ['accuracy'])
+    model.fit_generator(
+        train_gen,
+        steps_per_epoch=8382 // batch_size,
+        epochs=30)
+    
+    for layer in model.layers:
+        layer.trainable = True
+    model.compile(optimizer = Adam(lr = 1e-5), loss = 'binary_crossentropy', metrics = ['accuracy'])
+    model.fit_generator(
+        train_gen,
+        steps_per_epoch=8382 // batch_size,
+        epochs=40)
     
     return model
 

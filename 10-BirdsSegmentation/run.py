@@ -116,6 +116,10 @@ def grade(data_path):
     return res
 
 
+def iou(y_true, y_pred):
+        return 1
+
+
 def run_single_test(data_dir, output_dir, model_path='segmentation_model.hdf5'):
     from segmentation import predict
     from tensorflow.keras.models import load_model
@@ -127,7 +131,7 @@ def run_single_test(data_dir, output_dir, model_path='segmentation_model.hdf5'):
 
     #from segmentation import train_segmentation_model
     #model = train_segmentation_model(join(data_dir, 'train'))
-
+    #model = load_model(join(code_dir, model_path), custom_objects={'iou': iou})
     model = load_model(join(code_dir, model_path))
 
     img_filenames = glob(join(data_dir, 'test/images/**/*.jpg'))
