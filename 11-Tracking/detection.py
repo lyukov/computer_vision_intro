@@ -46,13 +46,14 @@ def extract_detections(frame, min_confidence=0.6, labels=None):
     """
     # Write code here
     # First, convert frame to float and resize to 300x300
-
+    img = resize(frame.astype('float'), (300, 300))
     # Then use preprocess_input, model.predict and bbox_util.detection_out
     # Use help(...) function to help
-    results = ...
-
+    x = preprocess_input(img)
+    results = model.predict(np.array([x]))
+    results = bbox_util.detection_out(results)
     # Select detections with confidence > min_confidence
-
+    results = list(filter(lambda x: x[1] > min_confidence, results[0]))
     # If label set is known, use it
     if labels is not None:
         result_labels = results[:, 0].astype(np.int32)
@@ -60,10 +61,11 @@ def extract_detections(frame, min_confidence=0.6, labels=None):
         results = results[indeces]
 
     # Remove confidence column from result
-
     # Resize detection coords to input image shape.
     # Didn't you forget to save it before resize?
-
+    y_coef = frame.shape[0]
+    x_coef = frame.shape[1]
+    results = list(map(lambda x: [x[0], x[2] * x_coef, x[3] * y_coef, x[4] * x_coef, x[5] * y_coef], results))
     # Return result
     return detection_cast(results)
 
