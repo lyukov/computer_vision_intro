@@ -12,7 +12,18 @@ def iou_score(bbox1, bbox2):
 
     # Write code here
 
-    return ...
+    def calc_intersection(bbox1, bbox2):
+        l = max(bbox1[0], bbox2[0])
+        r = min(bbox1[2], bbox2[2])
+        u = max(bbox1[1], bbox2[1])
+        d = min(bbox1[3], bbox2[3])
+        return max(r - l, 0) * max(d - u, 0)
+        
+    def area(bbox):
+        return (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+    
+    intersection = calc_intersection(bbox1, bbox2)
+    return intersection / (area(bbox1) + area(bbox2) - intersection)
 
 
 def motp(obj, hyp, threshold=0.5):
