@@ -29,8 +29,11 @@ class Tracker:
         """Get new unique label for every detection at frame and return it."""
         # Write code here
         # Use extract_detections and new_label
-
-        return ...
+        result = list(map(
+            lambda det: [self.new_label()] + list(det),
+            extract_detections(frame)[:, 1:]
+        ))
+        return np.array(result)
 
     @property
     def prev_detections(self):
@@ -40,6 +43,12 @@ class Tracker:
         """
         detections = []
         # Write code here
+        ids = set()
+        for detection in self.detection_history[-self.lookup_tail_size:][::-1]:
+            for det in detection:
+                if det[0] not in ids:
+                    ids.add(det[0])
+                    detections.append(det)
 
         return detection_cast(detections)
 
@@ -52,11 +61,31 @@ class Tracker:
         return: binded detections numpy int array Cx5 [[tracklet_id, xmin, ymin, xmax, ymax]]
         """
         detections = detections.copy()
+        UNASSIGNED = -1
+        for det in detections:
+            det[0] = UNASSIGNED
         prev_detections = self.prev_detections
 
         # Write code here
-
         # Step 1: calc pairwise detection IOU
+        ious = sorted(
+            [
+                (det, prev_det[0], iou_score(det[-4:], prev_det[-4:]))
+                for det in detections
+                for prev_det in prev_detections
+            ],
+            key=lambda x: x[2],
+            reverse=True
+        )
+        print(ious)
+        used_labels = set()
+        thrs = 0.7
+        for det, label, iou in ious:
+            if iou < thrs:
+                break
+            if (det[0] == UNASSIGNED) and (label not in used_labels):
+                det[0] = label
+                used_labels.add(label)
 
         # Step 2: sort IOU list
 
@@ -64,7 +93,10 @@ class Tracker:
         # One matching for each id
 
         # Step 4: assign new tracklet id to unmatched detections
-
+        for det in detections:
+            if det[0] == UNASSIGNED:
+                det[0] = self.new_label()
+        print(detections)
         return detection_cast(detections)
 
     def save_detections(self, detections):
