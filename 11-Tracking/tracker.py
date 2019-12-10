@@ -78,9 +78,9 @@ class Tracker:
             reverse=True
         )
         used_labels = set()
-        thrs = 0.7
+        thrs = 0.5
         for det, label, iou in ious:
-            if iou < thrs:
+            if iou <= thrs:
                 break
             if (det[0] == UNASSIGNED) and (label not in used_labels):
                 det[0] = label
