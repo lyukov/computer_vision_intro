@@ -12,3 +12,5 @@
 .ipynb_checkpoints
 *.npy
 *.h5
+.directory
+.idea
