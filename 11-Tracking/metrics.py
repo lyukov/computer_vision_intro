@@ -39,6 +39,8 @@ def motp(obj, hyp, threshold=0.5):
 
     threshold: IOU threshold
     """
+    obj = obj.copy()
+    hyp = hyp.copy()
 
     dist_sum = 0  # a sum of IOU distances between matched objects and hypotheses
     match_count = 0
@@ -50,25 +52,59 @@ def motp(obj, hyp, threshold=0.5):
         # Write code here
 
         # Step 1: Convert frame detections to dict with IDs as keys
+        dict_obj = dict(list(map(
+            lambda x: (x[0], x[1:]),
+            frame_obj
+        )))
+        dict_hyp = dict(list(map(
+            lambda x: (x[0], x[1:]),
+            frame_hyp
+        )))
 
         # Step 2: Iterate over all previous matches
         # If object is still visible, hypothesis still exists
         # and IOU distance > threshold - we've got a match
         # Update the sum of IoU distances and match count
         # Delete matched detections from frame detections
+        for obj_id, hyp_id in matches.items():
+            if (obj_id not in dict_obj) or (hyp_id not in dict_hyp):
+                continue
+            iou = iou_score(dict_obj[obj_id], dict_hyp[hyp_id])
+            if iou > threshold:
+                del dict_obj[obj_id]
+                del dict_hyp[hyp_id]
+                dist_sum += iou
+                match_count += 1
+
 
         # Step 3: Calculate pairwise detection IOU between remaining frame detections
         # Save IDs with IOU > threshold
+        ious = list(filter(
+            lambda x: x[2] > threshold,
+            sorted(
+                [
+                    (obj_id, hyp_id, iou_score(obj_bbox, hyp_bbox))
+                    for obj_id, obj_bbox in dict_obj.items()
+                    for hyp_id, hyp_bbox in dict_hyp.items()
+                ],
+                key=lambda x: x[2],
+                reverse=True
+            )
+        ))
 
         # Step 4: Iterate over sorted pairwise IOU
         # Update the sum of IoU distances and match count
         # Delete matched detections from frame detections
+        for obj_id, hyp_id, iou in ious:
+            matches[obj_id] = hyp_id
+            dist_sum += iou
+            match_count += 1
 
         # Step 5: Update matches with current matched IDs
         pass
 
     # Step 6: Calculate MOTP
-    MOTP = ...
+    MOTP = dist_sum / match_count
 
     return MOTP
 

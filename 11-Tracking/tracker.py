@@ -77,7 +77,6 @@ class Tracker:
             key=lambda x: x[2],
             reverse=True
         )
-        print(ious)
         used_labels = set()
         thrs = 0.7
         for det, label, iou in ious:
@@ -96,7 +95,6 @@ class Tracker:
         for det in detections:
             if det[0] == UNASSIGNED:
                 det[0] = self.new_label()
-        print(detections)
         return detection_cast(detections)
 
     def save_detections(self, detections):
