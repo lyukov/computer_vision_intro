@@ -34,23 +34,28 @@ class CorrelationTracker(Tracker):
         detections = []
         # Write code here
         # Apply rgb2gray to frame and previous frame
-
+        prev_frame = rgb2gray(self.prev_frame)
+        frame = rgb2gray(frame)
         # For every previous detection
         # Use match_template + gaussian to extract detection on current frame
         for label, xmin, ymin, xmax, ymax in self.detection_history[-1]:
             # Step 0: Extract prev_bbox from prev_frame
-
+            prev_bbox = prev_frame[ymin: ymax, xmin: xmax]
             # Step 1: Extract new_bbox from current frame with the same coordinates
-
+            new_bbox = frame[ymin: ymax, xmin: xmax]
             # Step 2: Calc match_template between previous and new bbox
             # Use padding
-
+            matching = match_template(new_bbox, prev_bbox, pad_input=True)
             # Step 3: Then multiply matching by gauss function
             # Find argmax(matching * gauss)
-
+            h, w = matching.shape
+            gauss = gaussian((h, w), w // 2, h // 2, w, h)
+            y, x = np.unravel_index(np.argmax(matching * gauss), (h, w))
+            y -= h // 2
+            x -= w // 2
             # Step 4: Append to detection list
-            detections.append(...)
-
+            detections.append([label, max(xmin + x, 0), max(ymin + y, 0), xmax + x, ymax + y])
+        # print('Frame', self.frame_index, detections)
         return detection_cast(detections)
 
     def update_frame(self, frame):

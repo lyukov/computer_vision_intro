@@ -33,7 +33,7 @@ class Tracker:
             lambda det: [self.new_label()] + list(det),
             extract_detections(frame)[:, 1:]
         ))
-        return np.array(result)
+        return detection_cast(result)
 
     @property
     def prev_detections(self):
@@ -77,19 +77,19 @@ class Tracker:
             key=lambda x: x[2],
             reverse=True
         )
+
+        # Step 2: sort IOU list
+
+        # Step 3: fill detections[:, 0] with best match
+        # One matching for each id
         used_labels = set()
-        thrs = 0.5
+        thrs = 0.1
         for det, label, iou in ious:
             if iou <= thrs:
                 break
             if (det[0] == UNASSIGNED) and (label not in used_labels):
                 det[0] = label
                 used_labels.add(label)
-
-        # Step 2: sort IOU list
-
-        # Step 3: fill detections[:, 0] with best match
-        # One matching for each id
 
         # Step 4: assign new tracklet id to unmatched detections
         for det in detections:
